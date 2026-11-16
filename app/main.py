@@ -1,7 +1,13 @@
 """This file contains the main application entry point."""
 
+import asyncio
+import os
+import sys
 from contextlib import asynccontextmanager
 from datetime import datetime
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -11,7 +17,11 @@ from fastapi import (
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+)
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -19,6 +29,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 
 from app.api.v1.api import api_router
 from app.api.v1.chatbot import agent
+from app.api.v1.research import research_workflow
 from app.core.cache import cache_service
 from app.core.config import settings
 from app.core.limiter import limiter
@@ -55,19 +66,48 @@ async def lifespan(app: FastAPI):
         logger.exception("cache_initialization_failed", error=str(e))
 
     # Pre-warm the LangGraph agent: create graph + connection pool at startup
-    # to avoid cold-start latency on the first request
+    # to avoid cold-start latency on the first request (skipped gracefully if postgres is offline)
     try:
-        await agent.create_graph()
+        _r, _w = await asyncio.wait_for(
+            asyncio.open_connection(settings.POSTGRES_HOST, settings.POSTGRES_PORT),
+            timeout=0.4,
+        )
+        _w.close()
+        await _w.wait_closed()
+        await asyncio.wait_for(agent.create_graph(), timeout=1.5)
         logger.info("graph_pre_warmed")
     except Exception as e:
-        logger.exception("graph_pre_warm_failed", error=str(e))
+        logger.info("graph_pre_warm_skipped", reason=str(e))
+        if agent._connection_pool:
+            try:
+                await agent._connection_pool.close()
+            except Exception:
+                pass
+            agent._connection_pool = None
+
+    # Pre-warm the Research Agent workflow
+    try:
+        research_workflow.create_graph()
+        logger.info("research_workflow_pre_warmed")
+    except Exception as e:
+        logger.exception("research_workflow_pre_warm_failed", error=str(e))
 
     # Pre-warm mem0 AsyncMemory: initializes pgvector connection and schema check
     # so the first search() cache miss or add() doesn't pay the ~130ms cold-init cost
     try:
-        await memory_service.initialize()
+        if settings.OPENAI_API_KEY:
+            _r, _w = await asyncio.wait_for(
+                asyncio.open_connection(settings.POSTGRES_HOST, settings.POSTGRES_PORT),
+                timeout=0.4,
+            )
+            _w.close()
+            await _w.wait_closed()
+            await asyncio.wait_for(memory_service.initialize(), timeout=1.5)
+            logger.info("memory_service_pre_warmed")
+        else:
+            logger.info("memory_service_pre_warm_skipped", reason="OPENAI_API_KEY not configured")
     except Exception as e:
-        logger.exception("memory_service_pre_warm_failed", error=str(e))
+        logger.info("memory_service_pre_warm_skipped", reason=str(e))
 
     yield
 
@@ -153,11 +193,25 @@ app.add_middleware(
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
-@app.get("/")
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+_INDEX_HTML = os.path.join(_STATIC_DIR, "index.html")
+
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/ui", response_class=HTMLResponse)
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["root"][0])
-async def root(request: Request):
-    """Root endpoint returning basic API information."""
-    logger.info("root_endpoint_called")
+async def serve_ui(request: Request):
+    """Serve the interactive Technical Research Agent Chatbot UI."""
+    if os.path.isfile(_INDEX_HTML):
+        return FileResponse(_INDEX_HTML, media_type="text/html")
+    return HTMLResponse("<h1>Technical Research Agent</h1><p>UI file not found.</p>")
+
+
+@app.get("/info")
+@limiter.limit(settings.RATE_LIMIT_ENDPOINTS["root"][0])
+async def api_info(request: Request):
+    """Endpoint returning basic API information."""
+    logger.info("api_info_called")
     return {
         "name": settings.PROJECT_NAME,
         "version": settings.VERSION,

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Technical Research Agent | Autonomous Engineering Copilot</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Marked.js for Markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Highlight.js for Code Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: #182234;
+      --bg-card-hover: #1f2c42;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: #6366f1;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-primary: #6366f1;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --gradient-accent: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.10) 0%, transparent 40%);
+    }
+
+    /* Top Navigation */
+    header {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--gradient-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+
+    .brand-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .status-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+
+    .badge-otel {
+      border-color: rgba(6, 182, 212, 0.3);
+      color: var(--accent-cyan);
+    }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn-clear:hover {
+      background: rgba(244, 63, 94, 0.15);
+      border-color: rgba(244, 63, 94, 0.4);
+      color: var(--accent-rose);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 1060px;
+      width: 100%;
+      margin: 0 auto;
+      height: calc(100vh - 70px);
+      padding: 16px 20px;
+      gap: 16px;
+    }
+
+    /* Chat Messages Viewport */
+    #chat-viewport {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scroll-behavior: smooth;
+    }
+
+    #chat-viewport::-webkit-scrollbar {
+      width: 6px;
+    }
+    #chat-viewport::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #chat-viewport::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+    }
+
+    /* Welcome Card */
+    .welcome-card {
+      background: rgba(24, 34, 52, 0.65);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    .welcome-card h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .welcome-card p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .quick-prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .prompt-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .prompt-chip:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--accent-primary);
+      transform: translateY(-1px);
+    }
+
+    /* Message Bubbles */
+    .message-row {
+      display: flex;
+      gap: 12px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .message-row.user {
+      justify-content: flex-end;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .avatar.agent {
+      background: var(--gradient-accent);
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .avatar.user-avatar {
+      background: #334155;
+    }
+
+    .message-content {
+      max-width: 85%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .user-bubble {
+      background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 18px 18px 4px 18px;
+      font-size: 14.5px;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+
+    .agent-bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px 18px 18px 4px;
+      padding: 18px 22px;
+      font-size: 14.5px;
+      line-height: 1.65;
+      color: var(--text-primary);
+    }
+
+    /* Live Pipeline Activity Feed */
+    .pipeline-container {
+      background: rgba(11, 15, 25, 0.7);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .pipeline-header {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pipeline-nodes {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .node-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 13px;
+      transition: all 0.3s ease;
+    }
+
+    .node-item.running {
+      background: rgba(99, 102, 241, 0.08);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .node-item.completed {
+      background: rgba(16, 185, 129, 0.06);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .node-status-icon {
+      font-size: 14px;
+      width: 20px;
+      text-align: center;
+      margin-top: 1px;
+    }
+
+    .node-details {
+      flex: 1;
+    }
+
+    .node-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .node-title {
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+    }
+
+    .node-pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .pill-router {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .pill-agent {
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .pill-report {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .node-desc {
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .tools-badges-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .tool-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .tool-badge.active {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: var(--accent-primary);
+      color: #fff;
+    }
+
+    /* Markdown Styling in Agent Report */
+    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
+      color: #fff;
+      margin: 18px 0 10px;
+      font-weight: 700;
+    }
+
+    .markdown-body h1 { font-size: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    .markdown-body h2 { font-size: 17px; }
+    .markdown-body h3 { font-size: 15px; }
+
+    .markdown-body p {
+      margin-bottom: 12px;
+      line-height: 1.65;
+    }
+
+    .markdown-body ul, .markdown-body ol {
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    .markdown-body li {
+      margin-bottom: 6px;
+    }
+
+    .markdown-body pre {
+      background: #090d16 !important;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+
+    .markdown-body code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+    }
+
+    .markdown-body p code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #e2e8f0;
+    }
+
+    .markdown-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 13.5px;
+    }
+
+    .markdown-body th, .markdown-body td {
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .markdown-body th {
+      background: rgba(255, 255, 255, 0.04);
+      font-weight: 600;
+    }
+
+    .markdown-body a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(6, 182, 212, 0.4);
+    }
+
+    .markdown-body a:hover {
+      border-bottom-style: solid;
+    }
+
+    /* Sources Cards */
+    .sources-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .source-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--accent-cyan);
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .source-pill:hover {
+      background: rgba(6, 182, 212, 0.15);
+      border-color: var(--accent-cyan);
+    }
+
+    /* Message Footer Meta */
+    .message-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .meta-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-action {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.2s ease;
+    }
+
+    .btn-action:hover {
+      color: var(--text-primary);
+    }
+
+    /* Input Dock */
+    .input-dock {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 8px 12px 8px 18px;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.2s ease;
+    }
+
+    .input-dock:focus-within {
+      border-color: var(--border-focus);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+    }
+
+    textarea#query-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14.5px;
+      line-height: 1.5;
+      resize: none;
+      max-height: 140px;
+      min-height: 24px;
+      padding: 6px 0;
+    }
+
+    textarea#query-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn-send {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--gradient-accent);
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-send:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45);
+    }
+
+    .btn-send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .spinner-sm {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(99, 102, 241, 0.3);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .pulse {
+      animation: pulseAnim 1.5s infinite;
+    }
+
+    @keyframes pulseAnim {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🔬</div>
+      <div>
+        <div class="brand-title">Technical Research Agent</div>
+        <div class="brand-subtitle">3-Node LangGraph Engine (ReAct + Serper + GitHub)</div>
+      </div>
+    </div>
+    <div class="status-badges">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        <span>Nemotron 3.5 Lightning (Free)</span>
+      </div>
+      <div class="badge badge-otel">
+        <span>⚡ OpenTelemetry & Langfuse Active</span>
+      </div>
+      <button class="btn-clear" onclick="clearChat()">Clear Chat</button>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main>
+    <div id="chat-viewport">
+      <!-- Welcome Intro Card -->
+      <div class="welcome-card" id="welcome-card">
+        <h2>Autonomous Technical Research Assistant</h2>
+        <p>
+          Ask any deep technical questions, architectural comparisons, or GitHub repository inspections.
+          The agent executes a streamlined <strong>3-node LangGraph workflow</strong> with live tool tracing, batch web searching, and mandatory citations.
+        </p>
+        <div class="quick-prompts">
+          <div class="prompt-chip" onclick="usePrompt('Compare LangGraph vs CrewAI architecture and state management reliability.')">
+            <span>⚖️</span> Compare LangGraph vs CrewAI
+          </div>
+          <div class="prompt-chip" onclick="usePrompt('Inspect fastapi/fastapi repository on GitHub: stars, license, issues, and top files.')">
+            <span>📦</span> Inspect fastapi/fastapi Repo
+          </div>
+          <div class="prompt-chip" onclick="usePrompt('Explain Pydantic v2 performance vs Pydantic v1 with benchmarks.')">
+            <span>⚡</span> Pydantic v2 Benchmarks
+          </div>
+          <div class="prompt-chip" onclick="usePrompt('Hello! What are your capabilities?')">
+            <span>👋</span> Hello / Capabilities
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky Input Box -->
+    <div class="input-dock">
+      <textarea 
+        id="query-input" 
+        rows="1" 
+        placeholder="Type a technical question or research topic... (Enter to send, Shift+Enter for new line)"
+        onkeydown="handleKeyDown(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="btn-send" id="btn-send" onclick="sendQuery()">
+        <svg id="send-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+        <div class="spinner" id="send-spinner" style="display: none;"></div>
+      </button>
+    </div>
+  </main>
+
+  <script>
+    const chatViewport = document.getElementById('chat-viewport');
+    const queryInput = document.getElementById('query-input');
+    const btnSend = document.getElementById('btn-send');
+    const sendIcon = document.getElementById('send-icon');
+    const sendSpinner = document.getElementById('send-spinner');
+    const welcomeCard = document.getElementById('welcome-card');
+
+    let isGenerating = false;
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+    }
+
+    function handleKeyDown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendQuery();
+      }
+    }
+
+    function usePrompt(text) {
+      queryInput.value = text;
+      autoResize(queryInput);
+      queryInput.focus();
+    }
+
+    function clearChat() {
+      chatViewport.innerHTML = '';
+      if (welcomeCard) chatViewport.appendChild(welcomeCard);
+    }
+
+    function scrollToBottom() {
+      chatViewport.scrollTop = chatViewport.scrollHeight;
+    }
+
+    async function sendQuery() {
+      const query = queryInput.value.trim();
+      if (!query || isGenerating) return;
+
+      isGenerating = true;
+      btnSend.disabled = true;
+      sendIcon.style.display = 'none';
+      sendSpinner.style.display = 'block';
+
+      if (welcomeCard && welcomeCard.parentNode === chatViewport) {
+        welcomeCard.style.display = 'none';
+      }
+
+      // Append User Message
+      appendUserMessage(query);
+      queryInput.value = '';
+      autoResize(queryInput);
+
+      // Create Agent Message Container with Live Activity Pipeline
+      const agentMsgId = 'msg-' + Date.now();
+      const startTime = performance.now();
+      const agentContainer = createAgentMessageContainer(agentMsgId);
+      chatViewport.appendChild(agentContainer);
+      scrollToBottom();
+
+      const pipelineEl = document.getElementById(`pipeline-${agentMsgId}`);
+      const contentEl = document.getElementById(`content-${agentMsgId}`);
+      const metaEl = document.getElementById(`meta-${agentMsgId}`);
+
+      try {
+        // Connect to Server-Sent Events (SSE) streaming endpoint
+        const response = await fetch('/api/v1/research/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server returned HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let finalReport = '';
+        let sourcesCited = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop(); // keep remainder
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(trimmed.slice(6));
+                handleStreamEvent(event, agentMsgId);
+
+                if (event.type === 'complete') {
+                  finalReport = event.final_report || '';
+                  sourcesCited = event.sources_cited || [];
+                }
+              } catch (err) {
+                console.warn('SSE JSON parse error:', err, trimmed);
+              }
+            }
+          }
+        }
+
+        // Render Final Report
+        if (finalReport) {
+          contentEl.innerHTML = marked.parse(finalReport);
+          contentEl.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+          });
+        }
+
+        // Render Sources Pills if any
+        if (sourcesCited && sourcesCited.length > 0) {
+          const sourcesContainer = document.createElement('div');
+          sourcesContainer.className = 'sources-list';
+          sourcesContainer.innerHTML = '<strong>📚 Sources Cited:</strong> ' + sourcesCited.map(s => 
+            `<a href="${s}" target="_blank" rel="noopener noreferrer" class="source-pill" title="${s}">🔗 ${s.replace('https://', '').replace('http://', '')}</a>`
+          ).join('');
+          contentEl.appendChild(sourcesContainer);
+        }
+
+        const duration = ((performance.now() - startTime) / 1000).toFixed(1);
+        metaEl.innerHTML = `
+          <span>⚡ Completed in ${duration}s • Traced in Langfuse (OpenTelemetry)</span>
+          <div class="meta-actions">
+            <button class="btn-action" onclick="copyReport('${agentMsgId}')">📋 Copy Report</button>
+          </div>
+        `;
+
+      } catch (err) {
+        console.error('Investigation error:', err);
+        contentEl.innerHTML = `<div style="color: var(--accent-rose);"><strong>⚠️ Error during execution:</strong> ${err.message}</div>`;
+      } finally {
+        isGenerating = false;
+        btnSend.disabled = false;
+        sendIcon.style.display = 'block';
+        sendSpinner.style.display = 'none';
+        scrollToBottom();
+      }
+    }
+
+    function appendUserMessage(text) {
+      const row = document.createElement('div');
+      row.className = 'message-row user';
+      row.innerHTML = `
+        <div class="message-content">
+          <div class="user-bubble">${escapeHtml(text)}</div>
+        </div>
+        <div class="avatar user-avatar">👤</div>
+      `;
+      chatViewport.appendChild(row);
+    }
+
+    function createAgentMessageContainer(id) {
+      const row = document.createElement('div');
+      row.className = 'message-row agent';
+      row.innerHTML = `
+        <div class="avatar agent">🔬</div>
+        <div class="message-content" style="width: 100%;">
+          <div class="agent-bubble">
+            <!-- Live Activity Pipeline -->
+            <div class="pipeline-container" id="pipeline-${id}">
+              <div class="pipeline-header">
+                <span class="spinner-sm"></span>
+                <span>Live LangGraph Execution Pipeline</span>
+              </div>
+              <div class="pipeline-nodes">
+                <!-- Node 1: Entry Router -->
+                <div class="node-item running" id="node-entry-${id}">
+                  <span class="node-status-icon">⏳</span>
+                  <div class="node-details">
+                    <div class="node-title-row">
+                      <span class="node-title">1. entry_node (Router)</span>
+                      <span class="node-pill pill-router">Evaluating</span>
+                    </div>
+                    <div class="node-desc" id="desc-entry-${id}">Classifying query to determine execution route...</div>
+                  </div>
+                </div>
+
+                <!-- Node 2: ReAct Agent -->
+                <div class="node-item" id="node-agent-${id}">
+                  <span class="node-status-icon">⚪</span>
+                  <div class="node-details">
+                    <div class="node-title-row">
+                      <span class="node-title">2. execute_agent (ReAct)</span>
+                      <span class="node-pill pill-agent">Pending</span>
+                    </div>
+                    <div class="node-desc" id="desc-agent-${id}">Waiting for router decision...</div>
+                    <div class="tools-badges-row">
+                      <span class="tool-badge" id="tool-search-${id}">🔍 web_search (max 3 batch)</span>
+                      <span class="tool-badge" id="tool-page-${id}">📄 fetch_webpage</span>
+                      <span class="tool-badge" id="tool-repo-${id}">🐙 github_repo</span>
+                      <span class="tool-badge" id="tool-file-${id}">📁 github_file</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Node 3: Synthesis Report -->
+                <div class="node-item" id="node-report-${id}">
+                  <span class="node-status-icon">⚪</span>
+                  <div class="node-details">
+                    <div class="node-title-row">
+                      <span class="node-title">3. generate_report</span>
+                      <span class="node-pill pill-report">Pending</span>
+                    </div>
+                    <div class="node-desc" id="desc-report-${id}">Waiting for research completion...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Report Body -->
+            <div class="markdown-body" id="content-${id}">
+              <p class="pulse" style="color: var(--text-secondary);">Initializing investigation workflow...</p>
+            </div>
+
+            <!-- Meta Footer -->
+            <div class="message-meta" id="meta-${id}">
+              <span>Executing nodes...</span>
+            </div>
+          </div>
+        </div>
+      `;
+      return row;
+    }
+
+    function handleStreamEvent(event, id) {
+      if (event.type === 'node_start') {
+        const node = event.node;
+        if (node === 'entry_node') {
+          setNodeRunning(`node-entry-${id}`, `desc-entry-${id}`, event.message || 'Classifying query...');
+        } else if (node === 'execute_agent') {
+          setNodeRunning(`node-agent-${id}`, `desc-agent-${id}`, event.message || 'Executing agent with tools...');
+          // Highlight tools
+          ['search', 'page', 'repo', 'file'].forEach(t => {
+            const el = document.getElementById(`tool-${t}-${id}`);
+            if (el) el.classList.add('active');
+          });
+        } else if (node === 'generate_report') {
+          setNodeRunning(`node-report-${id}`, `desc-report-${id}`, event.message || 'Synthesizing report...');
+        }
+      } else if (event.type === 'node_end') {
+        const node = event.node;
+        if (node === 'entry_node') {
+          const next = event.next_node;
+          const reasoning = event.reasoning || '';
+          setNodeCompleted(`node-entry-${id}`, `desc-entry-${id}`, `Route: [${next}] • ${reasoning}`);
+          const pill = document.querySelector(`#node-entry-${id} .node-pill`);
+          if (pill) pill.textContent = next;
+        } else if (node === 'execute_agent') {
+          const sources = event.sources_cited || [];
+          setNodeCompleted(`node-agent-${id}`, `desc-agent-${id}`, `Agent finished research. Discovered ${sources.length} sources.`);
+          const pill = document.querySelector(`#node-agent-${id} .node-pill`);
+          if (pill) pill.textContent = 'Completed';
+        } else if (node === 'generate_report') {
+          setNodeCompleted(`node-report-${id}`, `desc-report-${id}`, 'Report synthesized successfully.');
+          const pill = document.querySelector(`#node-report-${id} .node-pill`);
+          if (pill) pill.textContent = 'Done';
+        }
+      }
+      scrollToBottom();
+    }
+
+    function setNodeRunning(nodeId, descId, text) {
+      const nodeEl = document.getElementById(nodeId);
+      const descEl = document.getElementById(descId);
+      if (nodeEl) {
+        nodeEl.className = 'node-item running';
+        const icon = nodeEl.querySelector('.node-status-icon');
+        if (icon) icon.innerHTML = '<span class="spinner-sm"></span>';
+      }
+      if (descEl && text) descEl.textContent = text;
+    }
+
+    function setNodeCompleted(nodeId, descId, text) {
+      const nodeEl = document.getElementById(nodeId);
+      const descEl = document.getElementById(descId);
+      if (nodeEl) {
+        nodeEl.className = 'node-item completed';
+        const icon = nodeEl.querySelector('.node-status-icon');
+        if (icon) icon.textContent = '✅';
+      }
+      if (descEl && text) descEl.textContent = text;
+    }
+
+    function copyReport(id) {
+      const contentEl = document.getElementById(`content-${id}`);
+      if (contentEl) {
+        navigator.clipboard.writeText(contentEl.innerText).then(() => {
+          alert('Report copied to clipboard!');
+        });
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>
+

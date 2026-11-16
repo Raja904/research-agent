@@ -1,31 +1,95 @@
 """Prometheus metrics configuration for the application.
 
-This module sets up and configures Prometheus metrics for monitoring the application.
+This module provides clean, human-readable metrics for tracking agent queries,
+tool execution, token consumption, latency, and system performance.
 """
 
-from prometheus_client import Counter, Histogram, Gauge
-from starlette_prometheus import metrics, PrometheusMiddleware
-
-# Request metrics
-http_requests_total = Counter("http_requests_total", "Total number of HTTP requests", ["method", "endpoint", "status"])
-
-http_request_duration_seconds = Histogram(
-    "http_request_duration_seconds", "HTTP request duration in seconds", ["method", "endpoint"]
+from prometheus_client import (
+    Counter,
+    Gauge,
+    Histogram,
+)
+from starlette_prometheus import (
+    PrometheusMiddleware,
+    metrics,
 )
 
-# Database metrics
-db_connections = Gauge("db_connections", "Number of active database connections")
+from app.core.config import settings
 
-# Custom business metrics
-orders_processed = Counter("orders_processed_total", "Total number of orders processed")
+# --- Core HTTP & System Metrics ---
+http_requests_total = Counter(
+    "http_requests_total",
+    "Total HTTP requests received",
+    ["method", "endpoint", "status"],
+)
 
+http_request_duration_seconds = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request latency in seconds",
+    ["method", "endpoint"],
+    buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+)
+
+# --- Clean AI Agent & LangGraph Metrics ---
+agent_queries_total = Counter(
+    "agent_queries_total",
+    "Total queries handled by the technical research agent",
+    ["route", "status"],
+)
+
+agent_response_time_seconds = Histogram(
+    "agent_response_time_seconds",
+    "Total end-to-end response time for agent requests in seconds",
+    ["route", "status"],
+    buckets=[0.5, 1.0, 2.0, 3.5, 5.0, 8.0, 12.0, 20.0, 30.0],
+)
+
+agent_last_response_time_seconds = Gauge(
+    "agent_last_response_time_seconds",
+    "Latency of the most recent query in seconds",
+    ["route"],
+)
+
+agent_tokens_total = Counter(
+    "agent_tokens_total",
+    "Total tokens consumed by the AI agent",
+    ["type", "model"],  # type: "prompt" | "completion"
+)
+
+agent_tool_calls_total = Counter(
+    "agent_tool_calls_total",
+    "Total tool invocations by the ReAct agent",
+    ["tool", "status"],
+)
+
+agent_sources_discovered_total = Counter(
+    "agent_sources_discovered_total",
+    "Total reference URLs and repositories discovered and cited",
+)
+
+# Pre-initialize metric label combinations so they appear immediately in Prometheus & Grafana
+_default_model = settings.RESEARCH_MODEL_NAME or "nvidia/nemotron-3.5-lightning:free"
+
+for _route in ["execute_agent", "generate_report"]:
+    for _st in ["completed", "failed"]:
+        agent_queries_total.labels(route=_route, status=_st)
+        agent_response_time_seconds.labels(route=_route, status=_st)
+    agent_last_response_time_seconds.labels(route=_route).set(0.0)
+
+for _token_type in ["prompt", "completion"]:
+    agent_tokens_total.labels(type=_token_type, model=_default_model)
+
+for _tool in ["web_search", "fetch_webpage", "github_repo", "github_file"]:
+    for _st in ["success", "error"]:
+        agent_tool_calls_total.labels(tool=_tool, status=_st)
+
+# Legacy & Auxiliary metrics for other app modules
 llm_inference_duration_seconds = Histogram(
     "llm_inference_duration_seconds",
     "Time spent processing LLM inference",
     ["model"],
     buckets=[0.1, 0.3, 0.5, 1.0, 2.0, 5.0],
 )
-
 
 llm_stream_duration_seconds = Histogram(
     "llm_stream_duration_seconds",
@@ -40,6 +104,13 @@ session_names_generated_total = Counter(
     ["status"],  # "success" | "error"
 )
 
+db_connections = Gauge("db_connections", "Number of active database connections")
+
+# Backward-compatibility aliases for research agent
+agent_query_duration_seconds = agent_response_time_seconds
+research_runs_total = agent_queries_total
+research_tool_calls_total = agent_tool_calls_total
+
 
 def setup_metrics(app):
     """Set up Prometheus metrics middleware and endpoints.
@@ -47,8 +118,5 @@ def setup_metrics(app):
     Args:
         app: FastAPI application instance
     """
-    # Add Prometheus middleware
     app.add_middleware(PrometheusMiddleware)
-
-    # Add metrics endpoint
     app.add_route("/metrics", metrics)

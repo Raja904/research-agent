@@ -9,6 +9,15 @@ from app.schemas.chat import (
     StreamResponse,
 )
 from app.schemas.graph import GraphState
+from app.schemas.research_state import (
+    EvidenceItem,
+    FailureInjectionConfig,
+    ResearchRequest,
+    ResearchResponse,
+    ResearchState,
+    ResearchTask,
+    TechnicalReport,
+)
 
 __all__ = [
     "Token",
@@ -18,4 +27,11 @@ __all__ = [
     "Message",
     "StreamResponse",
     "GraphState",
+    "EvidenceItem",
+    "FailureInjectionConfig",
+    "ResearchRequest",
+    "ResearchResponse",
+    "ResearchState",
+    "ResearchTask",
+    "TechnicalReport",
 ]

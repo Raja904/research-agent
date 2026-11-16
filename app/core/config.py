@@ -153,7 +153,9 @@ class Settings:
         )
         self.LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
         self.LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
-        self.LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+        self.LANGFUSE_HOST = (
+            os.getenv("LANGFUSE_HOST") or os.getenv("LANGFUSE_BASE_URL") or "https://cloud.langfuse.com"
+        ).strip("\"'")
 
         # LangGraph Configuration
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -163,6 +165,19 @@ class Settings:
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))
         self.LLM_TOTAL_TIMEOUT = int(os.getenv("LLM_TOTAL_TIMEOUT", "60"))
+
+        # Research Agent & Tools Configuration
+        self.SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
+        self.GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+        self.MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+        self.OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+        self.RESEARCH_MODEL_PROVIDER = os.getenv("RESEARCH_MODEL_PROVIDER", "openrouter")
+        self.RESEARCH_MODEL_NAME = os.getenv("RESEARCH_MODEL_NAME", "nvidia/nemotron-3.5-lightning:free")
+        self.RESEARCH_MODEL_API_KEY = os.getenv("RESEARCH_MODEL_API_KEY", "")
+        self.RESEARCH_MODEL_BASE_URL = os.getenv("RESEARCH_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+        self.RESEARCH_MODEL_TEMPERATURE = float(os.getenv("RESEARCH_MODEL_TEMPERATURE", "0.2"))
+        self.RESEARCH_MODEL_REASONING_ENABLED = os.getenv("RESEARCH_MODEL_REASONING_ENABLED", "false").lower() == "true"
+        self.RESEARCH_MODEL_MAX_TOKENS = int(os.getenv("RESEARCH_MODEL_MAX_TOKENS", "8192"))
 
         # Long term memory Configuration
         self.LONG_TERM_MEMORY_MODEL = os.getenv("LONG_TERM_MEMORY_MODEL", "gpt-5-nano")
@@ -213,6 +228,7 @@ class Settings:
             "login": ["20 per minute"],
             "root": ["10 per minute"],
             "health": ["20 per minute"],
+            "research": ["20 per minute"],
         }
 
         # Update rate limit endpoints from environment variables
